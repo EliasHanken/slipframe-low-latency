@@ -1,0 +1,10 @@
+{
+  "name": "dev.hanken.slipframe.lowlatency",
+  "version": "0.1.0",
+  "displayName": "Slipframe Low Latency",
+  "description": "A driver-level low latency mode for Unity's D3D12 Windows players on NVIDIA GPUs. Tested on HDRP. No proxy DLLs.",
+  "unity": "6000.3",
+  "author": { "name": "Elias Hanken Fiskerstrand", "url": "https://hanken.dev" },
+  "license": "MIT",
+  "dependencies": { "com.unity.render-pipelines.core": "17.3.0" }
+}

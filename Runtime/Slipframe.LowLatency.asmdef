@@ -1,0 +1,9 @@
+{
+    "name": "Slipframe.LowLatency",
+    "rootNamespace": "Slipframe",
+    "references": ["Unity.RenderPipelines.Core.Runtime"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true
+}
