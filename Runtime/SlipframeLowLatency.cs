@@ -7,6 +7,16 @@ namespace Slipframe
 {
     public enum LatencyMode { Off = 0, On = 1, OnPlusBoost = 2 }
 
+    /// <summary>Takes over the low latency mode. Slipframe's frame generation does, because DLSS-G has to own it. A game
+    /// keeps calling SlipframeLowLatency either way.</summary>
+    public interface ILowLatencyProvider
+    {
+        bool Available { get; }
+        string Reason { get; }
+        void SetMode(LatencyMode mode);
+        float LatencyMs();
+    }
+
     /// NVIDIA's low latency mode for Unity's D3D12 players. It starts by itself in a Windows player: set Mode from your
     /// settings, and read Available and Reason to grey the option out. In the editor, or without an NVIDIA GPU, nothing
     /// per frame runs.
@@ -28,16 +38,26 @@ namespace Slipframe
         private static string _reason = "NOT IN THE EDITOR";
         private static IntPtr _event;
         private static LatencyMode _mode = LatencyMode.On;
+        private static ILowLatencyProvider _provider;
+
+        /// <summary>Hands the mode to a provider. Call it before the first scene loads.</summary>
+        public static void UseProvider(ILowLatencyProvider provider) => _provider = provider;
 
         /// It can run here: an NVIDIA GPU, a driver that supports it, D3D12.
-        public static bool Available { get { Probe(); return _available; } }
+        public static bool Available { get { if (_provider != null) return _provider.Available; Probe(); return _available; } }
         /// Why not, or null when it can.
-        public static string Reason { get { Probe(); return _available ? null : _reason; } }
+        public static string Reason { get { if (_provider != null) return _provider.Reason; Probe(); return _available ? null : _reason; } }
 
         public static LatencyMode Mode
         {
             get => _mode;
-            set { _mode = value; Probe(); if (_native) SlipframeLL_SetMode((int)value); }
+            set
+            {
+                _mode = value;
+                if (_provider != null) { _provider.SetMode(value); return; }
+                Probe();
+                if (_native) SlipframeLL_SetMode((int)value);
+            }
         }
 
         /// A frame cap the driver paces to, in frames a second, 0 for none. Lower latency than Application.targetFrameRate.
@@ -49,7 +69,7 @@ namespace Slipframe
 
         /// PC latency in ms, simulation start to the GPU finishing the frame, or -1 with no report yet. It reads 64 reports,
         /// so call it a couple of times a second, not every frame.
-        public static float LatencyMs() => _available ? SlipframeLL_LatencyMs() : -1f;
+        public static float LatencyMs() => _provider != null ? _provider.LatencyMs() : _available ? SlipframeLL_LatencyMs() : -1f;
 
         private static void Probe()
         {
@@ -72,6 +92,7 @@ namespace Slipframe
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
         {
+            if (_provider != null) { _provider.SetMode(_mode); return; }
             Probe();
             if (!_native || !_available) return;
             SlipframeLL_SetMode((int)_mode);
